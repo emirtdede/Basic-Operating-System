@@ -1,0 +1,213 @@
+EMU8086 GENERATED LISTING. MACHINE CODE <- SOURCE.
+ 
+loader.bin -- emu8086 assembler version: 4.08  
+ 
+[ 5.01.2024  --  17:06:32 ] 
+ 
+===================================================================================================
+[LINE]     LOC: MACHINE CODE                          SOURCE
+===================================================================================================
+ 
+[   1]        :                                       name "loader"
+[   2]        :                                       ; this is a very basic example of a tiny operating system.
+[   3]        :                                       
+[   4]        :                                       ; directive to create boot file:
+[   5]        :                                       #make_boot#
+[   6]        :                                       
+[   7]        :                                       ; this is an os loader only!
+[   8]        :                                       ;
+[   9]        :                                       ; it can be loaded at the first sector of a floppy disk:
+[  10]        :                                       
+[  11]        :                                       ;   cylinder: 0
+[  12]        :                                       ;   sector: 1
+[  13]        :                                       ;   head: 0
+[  14]        :                                       
+[  15]        :                                       
+[  16]        :                                       
+[  17]        :                                       ;=================================================
+[  18]        :                                       ; how to test micro-operating system:
+[  19]        :                                       ;   1. compile micro-os_loader.asm
+[  20]        :                                       ;   2. compile micro-os_kernel.asm
+[  21]        :                                       ;   3. compile writebin.asm
+[  22]        :                                       ;   4. insert empty floppy disk to drive a:
+[  23]        :                                       ;   5. from command prompt type:
+[  24]        :                                       ;        writebin loader.bin
+[  25]        :                                       ;        writebin kernel.bin /k
+[  26]        :                                       ;=================================================
+[  27]        :                                       
+[  28]        :                                       
+[  29]        :                                       ;
+[  30]        :                                       ; The code in this file is supposed to load
+[  31]        :                                       ; the kernel (micro-os_kernel.asm) and to pass control over it.
+[  32]        :                                       ; The kernel code should be on floppy at:
+[  33]        :                                       
+[  34]        :                                       ;   cylinder: 0
+[  35]        :                                       ;   sector: 2
+[  36]        :                                       ;   head: 0
+[  37]        :                                       
+[  38]        :                                       ; memory table (hex):
+[  39]        :                                       ; -------------------------------
+[  40]        :                                       ; 07c0:0000 |   boot sector
+[  41]        :                                       ; 07c0:01ff |   (512 bytes)
+[  42]        :                                       ; -------------------------------
+[  43]        :                                       ; 07c0:0200 |    stack
+[  44]        :                                       ; 07c0:03ff |   (255 words)
+[  45]        :                                       ; -------------------------------
+[  46]        :                                       ; 0800:0000 |    kernel
+[  47]        :                                       ; 0800:1400 |
+[  48]        :                                       ;           |   (currently 5 kb,
+[  49]        :                                       ;           |    10 sectors are
+[  50]        :                                       ;           |    loaded from
+[  51]        :                                       ;           |    floppy)
+[  52]        :                                       ; -------------------------------
+[  53]        :                                       
+[  54]        :                                       
+[  55]        :                                       ; To test this program in real envirinment write it to floppy
+[  56]        :                                       ; disk using compiled writebin.asm
+[  57]        :                                       ; After sucessfully compilation of both files,
+[  58]        :                                       ; type this from command prompt:   writebin loader.bin
+[  59]        :                                       
+[  60]        :                                       ; Note: floppy disk boot record will be overwritten.
+[  61]        :                                       ;       the floppy will not be useable under windows/dos until
+[  62]        :                                       ;       you reformat it, data on floppy disk may be lost.
+[  63]        :                                       ;       use empty floppy disks only.
+[  64]        :                                       
+[  65]        :                                       
+[  66]        :                                       ; micro-os_loader.asm file produced by this code should be less or
+[  67]        :                                       ; equal to 512 bytes, since this is the size of the boot sector.
+[  68]        :                                       
+[  69]        :                                       
+[  70]        :                                       
+[  71]        :                                       ; boot record is loaded at 0000:7c00
+[  72]        :                                       org 7c00h
+[  73]        :                                       
+[  74]        :                                       ; initialize the stack:
+[  75]    7C00: B8 C0 07                              mov     ax, 07c0h
+[  76]    7C03: 8E D0                                 mov     ss, ax
+[  77]    7C05: BC FE 03                              mov     sp, 03feh ; top of the stack.
+[  78]        :                                       
+[  79]        :                                       
+[  80]        :                                       ; set data segment:
+[  81]    7C08: 33 C0                                 xor     ax, ax
+[  82]    7C0A: 8E D8                                 mov     ds, ax
+[  83]        :                                       
+[  84]        :                                       ; set default video mode 80x25:
+[  85]    7C0C: B4 00                                 mov     ah, 00h
+[  86]    7C0E: B0 03                                 mov     al, 03h
+[  87]    7C10: CD 10                                 int     10h
+[  88]        :                                       
+[  89]        :                                       ; print welcome message:
+[  90]    7C12: BE 65 7C                              lea     si, msg
+[  91]    7C15: E8 3B 00                              call    print_string
+[  92]        :                                       
+[  93]        :                                       ;===================================
+[  94]        :                                       ; load the kernel at 0800h:0000h
+[  95]        :                                       ; 10 sectors starting at:
+[  96]        :                                       ;   cylinder: 0
+[  97]        :                                       ;   sector: 2
+[  98]        :                                       ;   head: 0
+[  99]        :                                       
+[ 100]        :                                       ; BIOS passes drive number in dl,
+[ 101]        :                                       ; so it's not changed:
+[ 102]        :                                       
+[ 103]    7C18: B4 02                                 mov     ah, 02h ; read function.
+[ 104]    7C1A: B0 0A                                 mov     al, 10  ; sectors to read.
+[ 105]    7C1C: B5 00                                 mov     ch, 0   ; cylinder.
+[ 106]    7C1E: B1 02                                 mov     cl, 2   ; sector.
+[ 107]    7C20: B6 00                                 mov     dh, 0   ; head.
+[ 108]        :                                       ; dl not changed! - drive number.
+[ 109]        :                                       
+[ 110]        :                                       ; es:bx points to receiving
+[ 111]        :                                       ;  data buffer:
+[ 112]    7C22: BB 00 08                              mov     bx, 0800h
+[ 113]    7C25: 8E C3                                 mov     es, bx
+[ 114]    7C27: BB 00 00                              mov     bx, 0
+[ 115]        :                                       
+[ 116]        :                                       ; read!
+[ 117]    7C2A: CD 13                                 int     13h
+[ 118]        :                                       ;===================================
+[ 119]        :                                       
+[ 120]        :                                       ; integrity check:
+[ 121]    7C2C: 26 80 3E 00 00 E9                     cmp     es:[0000],0E9h  ; first byte of kernel must be 0E9 (jmp).
+[ 122]    7C32: 74 1A                                 je     integrity_check_ok
+[ 123]        :                                       
+[ 124]        :                                       ; integrity check error
+[ 125]    7C34: BE 72 7C                              lea     si, err
+[ 126]    7C37: E8 19 00                              call    print_string
+[ 127]        :                                       
+[ 128]        :                                       ; wait for any key...
+[ 129]    7C3A: B4 00                                 mov     ah, 0
+[ 130]    7C3C: CD 16                                 int     16h
+[ 131]        :                                       
+[ 132]        :                                       ; store magic value at 0040h:0072h:
+[ 133]        :                                       ;   0000h - cold boot.
+[ 134]        :                                       ;   1234h - warm boot.
+[ 135]    7C3E: B8 40 00                              mov     ax, 0040h
+[ 136]    7C41: 8E D8                                 mov     ds, ax
+[ 137]    7C43: C7 06 72 00 00 00                     mov     w.[0072h], 0000h ; cold boot.
+[ 138]    7C49: EA 00 00 FF FF                        jmp	0ffffh:0000h	     ; reboot!
+[ 139]        :                                       
+[ 140]        :                                       ;===================================
+[ 141]        :                                       
+[ 142]    7C4E:                                       integrity_check_ok:
+[ 143]        :                                       ; pass control to kernel:
+[ 144]    7C4E: EA 00 00 00 08                        jmp     0800h:0000h
+[ 145]        :                                       
+[ 146]        :                                       ;===========================================
+[ 147]        :                                       
+[ 148]        :                                       
+[ 149]        :                                       
+[ 150]    7C53:                                       print_string proc near
+[ 151]    7C53: 50                                    push    ax      ; store registers...
+[ 152]    7C54: 56                                    push    si      ;
+[ 153]    7C55:                                       next_char:
+[ 154]    7C55: 8A 04                                 mov     al, [si]
+[ 155]    7C57: 3C 00                                 cmp     al, 0
+[ 156]    7C59: 74 07                                 jz      printed
+[ 157]    7C5B: 46                                    inc     si
+[ 158]    7C5C: B4 0E                                 mov     ah, 0eh ; teletype function.
+[ 159]    7C5E: CD 10                                 int     10h
+[ 160]    7C60: EB F3                                 jmp     next_char
+[ 161]    7C62:                                       printed:
+[ 162]    7C62: 5E                                    pop     si      ; re-store registers...
+[ 163]    7C63: 58                                    pop     ax      ;
+[ 164]    7C64: C3                                    ret
+[ 165]        :                                       print_string endp
+[ 166]        :                                       
+[ 167]        :                                       
+[ 168]        :                                       
+[ 169]        :                                       
+[ 170]        :                                       ;==== data section =====================
+[ 171]        :                                       
+[ 172]    7C65: 4C 6F 61 64 69 6E 67 2E 2E 2E 0D 0A   msg  db "Loading...",0Dh,0Ah, 0
+                00                                  
+[ 173]        :                                       
+[ 174]    7C72: 69 6E 76 61 6C 69 64 20 64 61 74 61   err  db "invalid data at sector: 2, cylinder: 0, head: 0 - integrity check failed.", 0Dh,0Ah
+                20 61 74 20 73 65 63 74 6F 72 3A 20 
+                32 2C 20 63 79 6C 69 6E 64 65 72 3A 
+                20 30 2C 20 68 65 61 64 3A 20 30 20 
+                2D 20 69 6E 74 65 67 72 69 74 79 20 
+                63 68 65 63 6B 20 66 61 69 6C 65 64 
+                2E 0D 0A                            
+[ 175]    7CBD: 72 65 66 65 72 20 74 6F 20 74 75 74   db "refer to tutorial 11 - making your own operating system.", 0Dh,0Ah
+                6F 72 69 61 6C 20 31 31 20 2D 20 6D 
+                61 6B 69 6E 67 20 79 6F 75 72 20 6F 
+                77 6E 20 6F 70 65 72 61 74 69 6E 67 
+                20 73 79 73 74 65 6D 2E 0D 0A       
+[ 176]    7CF7: 53 79 73 74 65 6D 20 77 69 6C 6C 20   db "System will reboot now. Press any key...", 0
+                72 65 62 6F 6F 74 20 6E 6F 77 2E 20 
+                50 72 65 73 73 20 61 6E 79 20 6B 65 
+                79 2E 2E 2E 00                      
+[ 177]        :                                       
+[ 178]        :                                       ;======================================
+[ 179]        :                                       
+[ 180]        :                                       
+[ 181]        :                                       
+ 
+===================================================================================================
+ 
+
+
+
+
+===================================================================================================

@@ -1,0 +1,14 @@
+< THE SYMBOL TABLE >  loader.bin  --  emu8086 assembler version: 4.08 
+===================================================================================================
+Name                     	Offset    	Size      	Type      	Segment   
+===================================================================================================
+INTEGRITY_CHECK_OK       	07C4E     	-1        	LABEL     	(NOSEG)   
+PRINT_STRING             	07C53     	-1        	NEAR      	(NOSEG)   
+NEXT_CHAR                	07C55     	-1        	LABEL     	(NOSEG)   
+PRINTED                  	07C62     	-1        	LABEL     	(NOSEG)   
+MSG                      	07C65     	1         	VAR       	(NOSEG)   
+ERR                      	07C72     	1         	VAR       	(NOSEG)   
+===================================================================================================
+[ 5.01.2024  --  17:06:32 ] 
+< END >
+ 
